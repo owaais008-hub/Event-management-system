@@ -6,17 +6,25 @@ import {
   deleteSession, 
   bookmarkSession, 
   removeBookmark, 
-  getBookmarkedSessions 
+  getBookmarkedSessions,
+  listPendingSessions,
+  approveSession,
+  rejectSession
 } from '../controllers/sessionController.js';
-import { protect, restrictTo } from '../middleware/auth.js';
+import { protect, restrictTo, optionalAuthenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Public routes
-router.get('/', getSessions);
+// Public routes (optionally attaches user so admins get all)
+router.get('/', optionalAuthenticate, getSessions);
 
 // Protected routes (user must be logged in)
 router.use(protect);
+
+// Admin-only session approvals
+router.get('/pending', restrictTo('admin'), listPendingSessions);
+router.post('/:id/approve', restrictTo('admin'), approveSession);
+router.post('/:id/reject', restrictTo('admin'), rejectSession);
 
 // Bookmark routes
 router.post('/:id/bookmark', bookmarkSession);

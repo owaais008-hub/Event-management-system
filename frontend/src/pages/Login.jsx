@@ -1,28 +1,40 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext.jsx';
+import { Mail, Lock, LogIn, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Input } from '../components/ui/Input';
+import { Button } from '../components/ui/Button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { toast } from 'react-toastify';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, initialSessionChecked } = useAuth();
   const nav = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
 
   useEffect(() => {
-    // Check if there's a login message in localStorage
     const message = localStorage.getItem('loginMessage');
     if (message) {
       setLoginMessage(message);
-      // Remove the message from localStorage so it doesn't persist
       localStorage.removeItem('loginMessage');
     }
-  }, []);
+    
+    if (initialSessionChecked) {
+      const sessionDestroyed = sessionStorage.getItem('sessionDestroyed');
+      if (sessionDestroyed) {
+        setLoginMessage('Your session has expired. Please log in again.');
+        sessionStorage.removeItem('sessionDestroyed');
+      }
+    }
+  }, [initialSessionChecked]);
 
-  // Validate form fields
   const validateForm = () => {
     const newErrors = {};
     
@@ -35,7 +47,7 @@ export default function Login() {
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = 'Password must be at least 6 characters long';
     }
     
     setErrors(newErrors);
@@ -45,10 +57,8 @@ export default function Login() {
   async function submit(e) {
     e.preventDefault();
     
-    // Clear previous errors
     setErrors({});
     
-    // Validate form
     if (!validateForm()) {
       return;
     }
@@ -58,147 +68,231 @@ export default function Login() {
     try {
       const res = await axios.post('/api/auth/login', { email, password });
       login(res.data);
+      toast.success('Welcome back!');
       
-      // Check if there's a return URL stored in localStorage
       const returnUrl = localStorage.getItem('returnUrl');
       if (returnUrl) {
-        // Remove the return URL from localStorage
         localStorage.removeItem('returnUrl');
-        // Redirect to the return URL
         nav(returnUrl);
       } else {
-        // Default redirect to home page
         nav('/');
       }
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Login failed. Please try again.';
       setErrors({ general: errorMessage });
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated background */}
       <div className="fixed inset-0 z-0 overflow-hidden">
         <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] opacity-20 dark:opacity-10">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
-          <div className="absolute top-1/3 left-2/3 w-96 h-96 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
-          <div className="absolute top-2/3 left-1/3 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
+          <motion.div
+            className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl"
+            animate={{
+              scale: [1, 1.2, 1],
+              x: [0, 50, 0],
+              y: [0, -50, 0],
+            }}
+            transition={{
+              duration: 20,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.div
+            className="absolute top-1/3 left-2/3 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl"
+            animate={{
+              scale: [1, 1.3, 1],
+              x: [0, -30, 0],
+              y: [0, 30, 0],
+            }}
+            transition={{
+              duration: 25,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 1
+            }}
+          />
+          <motion.div
+            className="absolute top-2/3 left-1/3 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl"
+            animate={{
+              scale: [1, 1.1, 1],
+              x: [0, 40, 0],
+              y: [0, -40, 0],
+            }}
+            transition={{
+              duration: 30,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 2
+            }}
+          />
         </div>
       </div>
       
-      {/* Light mode background */}
-      <div className="fixed inset-0 bg-cover bg-center dark:hidden" style={{backgroundImage: 'url("/white image.jpeg")'}}></div>
-      
-      {/* Dark mode background */}
-      <div className="fixed inset-0 bg-cover bg-center hidden dark:block" style={{backgroundImage: 'url("/dark-bg.jpg")'}}></div>
-      
-      {/* Enhanced overlay for better card contrast */}
-      <div className="fixed inset-0 bg-white/30 dark:bg-slate-900/40"></div>
-      
-      <div className="relative z-10 w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="font-extrabold text-3xl tracking-tight bg-gradient-to-r from-indigo-600 to-emerald-600 bg-clip-text text-transparent animate-pulse mb-2">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 w-full max-w-md"
+      >
+        <Card className="backdrop-blur-xl bg-white/95 dark:bg-slate-900/95 border-2 border-white/20 dark:border-slate-700/20 shadow-2xl">
+          <CardHeader className="text-center pb-2">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring" }}
+              className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg"
+            >
+              <LogIn className="w-10 h-10 text-white" />
+            </motion.div>
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
             Welcome Back
-          </h1>
-          <p className="text-slate-700 dark:text-slate-300">
-            Sign in to your account to continue
-          </p>
-        </div>
-        
-        {/* Enhanced card with better shadow and border */}
-        <div className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 dark:border-slate-700/50 p-8 transition-all duration-300 hover:shadow-3xl">
+            </CardTitle>
+            <CardDescription className="text-base mt-2">
+              Sign in to your account to continue
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
           {loginMessage && (
-            <div className="bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 rounded-2xl p-4 text-sm mb-6 slide-in-right">
-              <div className="flex items-center">
-                <span className="mr-2">ℹ️</span>
-                {loginMessage}
-              </div>
-            </div>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl flex items-start gap-3"
+              >
+                <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-700 dark:text-blue-300">{loginMessage}</p>
+              </motion.div>
           )}
           
           {errors.general && (
-            <div className="bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700 rounded-2xl p-4 text-sm mb-6 slide-in-right">
-              <div className="flex items-center">
-                <span className="mr-2">⚠️</span>
-                {errors.general}
-              </div>
-            </div>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3"
+              >
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700 dark:text-red-300">{errors.general}</p>
+              </motion.div>
           )}
           
           <form onSubmit={submit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium mb-2 text-slate-800 dark:text-slate-200">Email Address</label>
-              <input 
-                className={`input w-full ${errors.email ? 'border-rose-500' : ''}`} 
-                placeholder="you@example.com" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                disabled={loading}
-              />
-              {errors.email && <div className="text-rose-600 text-sm mt-1">{errors.email}</div>}
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Password</label>
-                <Link to="/reset-password" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
-                  Forgot Password?
-                </Link>
+              <div className="space-y-2">
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 dark:text-slate-300">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                  value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errors.email) setErrors({ ...errors, email: '' });
+                    }}
+                    error={errors.email}
+                    className="pl-10"
+                  disabled={loading}
+                />
               </div>
-              <input 
-                className={`input w-full ${errors.password ? 'border-rose-500' : ''}`} 
-                type="password" 
-                placeholder="••••••••" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                disabled={loading}
-              />
-              {errors.password && <div className="text-rose-600 text-sm mt-1">{errors.password}</div>}
+                {errors.email && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1"
+                  >
+                    <AlertCircle className="w-4 h-4" />
+                {errors.email}
+                  </motion.p>
+                )}
             </div>
             
-            <button 
-              className={`btn-primary w-full ${loading ? 'opacity-75 cursor-not-allowed' : ''}`} 
-              type="submit" 
+              <div className="space-y-2">
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-700 dark:text-slate-300">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errors.password) setErrors({ ...errors, password: '' });
+                    }}
+                    error={errors.password}
+                    className="pl-10 pr-10"
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1"
+                  >
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.password}
+                  </motion.p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                
+              </div>
+              
+              <Button
+              type="submit"
+                variant="primary"
+                size="lg"
+                className="w-full"
               disabled={loading}
             >
               {loading ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div>
-                  Signing in...
-                </div>
-              ) : 'Sign In'}
-            </button>
+                  <span className="flex items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Signing in...
+                  </span>
+              ) : (
+                  <span className="flex items-center gap-2">
+                    <LogIn className="w-5 h-5" />
+                    Sign In
+                  </span>
+              )}
+              </Button>
           </form>
           
-          <div className="text-center text-sm text-slate-600 dark:text-slate-400 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
-              Sign up
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Don't have an account?{' '}
+                <Link
+                  to="/signup"
+                  className="font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+                >
+                  Sign up here
             </Link>
+              </p>
           </div>
-        </div>
-      </div>
-      
-      {/* Add custom styles for animations */}
-      <style jsx>{`
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }

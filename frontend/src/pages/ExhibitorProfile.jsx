@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 
@@ -8,24 +8,25 @@ export default function ExhibitorProfile() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (id) {
-      fetchExhibitor();
-    }
-  }, [id]);
-
-  async function fetchExhibitor() {
+  const fetchExhibitor = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const res = await axios.get(`/api/exhibitors/${id}`);
       setExhibitor(res.data.exhibitor);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load exhibitor profile');
+    } catch (error) {
+      console.error('Error fetching exhibitor:', error);
+      setError(error.response?.data?.message || 'Failed to load exhibitor profile');
     } finally {
       setLoading(false);
     }
-  }
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchExhibitor();
+    }
+  }, [id, fetchExhibitor]);
 
   if (loading) {
     return (
@@ -186,7 +187,7 @@ export default function ExhibitorProfile() {
               >
                 <div className="font-medium">{event.title}</div>
                 <div className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-                  {new Date(event.date).toLocaleDateString()} • {event.location}
+                  {new Date(event.date).toLocaleDateString()} • {event.venue}
                 </div>
                 <div className="mt-2">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200">

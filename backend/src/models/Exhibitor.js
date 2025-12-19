@@ -17,7 +17,7 @@ const exhibitorSchema = new mongoose.Schema(
     },
     approved: { type: Boolean, default: false },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-    organizer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+    organizer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false } // Make optional for public registrations
   },
   { timestamps: true }
 );

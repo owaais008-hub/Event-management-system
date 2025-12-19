@@ -8,7 +8,8 @@ import {
   createExhibitor,
   updateExhibitor,
   deleteExhibitor,
-  updateExhibitorStatus
+  updateExhibitorStatus,
+  createPublicExhibitor
 } from '../controllers/exhibitorController.js';
 
 const router = Router();
@@ -16,6 +17,7 @@ const router = Router();
 // Public routes
 router.get('/', getApprovedExhibitors); // Default route returns approved exhibitors
 router.get('/approved', getApprovedExhibitors);
+router.post('/register', createPublicExhibitor); // Public exhibitor registration
 
 // Protected routes for organizers and admins
 router.use(authenticate);

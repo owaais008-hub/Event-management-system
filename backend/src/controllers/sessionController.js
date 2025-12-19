@@ -4,7 +4,20 @@ import User from '../models/User.js';
 // Get all sessions
 export async function getSessions(req, res) {
   try {
-    const sessions = await Session.find().sort({ dateTime: 1 });
+    const filter = {};
+    // Admin can see all sessions; others only approved
+    if (req.user && req.user.role === 'admin') {
+      // no filter unless explicitly provided later
+    } else if (req.user && req.user.role === 'organizer') {
+      // Organizers can see approved sessions and their own pending sessions
+      filter.$or = [
+        { status: 'approved' },
+        { status: 'pending' }
+      ];
+    } else {
+      filter.status = 'approved';
+    }
+    const sessions = await Session.find(filter).sort({ dateTime: 1 });
     res.json({ sessions });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch sessions' });
@@ -14,6 +27,14 @@ export async function getSessions(req, res) {
 // Create a new session
 export async function createSession(req, res) {
   try {
+    // Check if user is an organizer and if they are approved
+    if (req.user.role === 'organizer') {
+      const user = await User.findById(req.user.id);
+      if (!user || !user.isApproved) {
+        return res.status(403).json({ message: 'Organizer account not approved by admin' });
+      }
+    }
+    
     const { title, description, speaker, location, dateTime, duration } = req.body;
     
     // Validate required fields
@@ -35,7 +56,8 @@ export async function createSession(req, res) {
       sessionData.image = req.body.image;
     }
     
-    const session = new Session(sessionData);
+    // New sessions require admin approval
+    const session = new Session({ ...sessionData, status: 'pending' });
     await session.save();
     res.status(201).json({ session });
   } catch (error) {
@@ -46,6 +68,14 @@ export async function createSession(req, res) {
 // Update a session
 export async function updateSession(req, res) {
   try {
+    // Check if user is an organizer and if they are approved
+    if (req.user.role === 'organizer') {
+      const user = await User.findById(req.user.id);
+      if (!user || !user.isApproved) {
+        return res.status(403).json({ message: 'Organizer account not approved by admin' });
+      }
+    }
+    
     const { id } = req.params;
     const { title, description, speaker, location, dateTime, duration } = req.body;
     
@@ -148,10 +178,44 @@ export async function getBookmarkedSessions(req, res) {
   try {
     const userId = req.user.id;
     
-    const sessions = await Session.find({ bookmarks: userId }).sort({ dateTime: 1 });
+    const sessions = await Session.find({ bookmarks: userId, status: 'approved' }).sort({ dateTime: 1 });
     
     res.json({ sessions });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch bookmarked sessions' });
+  }
+}
+
+// Admin: list pending sessions
+export async function listPendingSessions(req, res) {
+  try {
+    const sessions = await Session.find({ status: 'pending' }).sort({ dateTime: 1 });
+    res.json({ sessions });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch pending sessions' });
+  }
+}
+
+// Admin: approve session
+export async function approveSession(req, res) {
+  try {
+    const { id } = req.params;
+    const session = await Session.findByIdAndUpdate(id, { status: 'approved' }, { new: true });
+    if (!session) return res.status(404).json({ message: 'Session not found' });
+    res.json({ message: 'Session approved successfully', session });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to approve session' });
+  }
+}
+
+// Admin: reject session
+export async function rejectSession(req, res) {
+  try {
+    const { id } = req.params;
+    const session = await Session.findByIdAndUpdate(id, { status: 'rejected' }, { new: true });
+    if (!session) return res.status(404).json({ message: 'Session not found' });
+    res.json({ message: 'Session rejected successfully', session });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to reject session' });
   }
 }

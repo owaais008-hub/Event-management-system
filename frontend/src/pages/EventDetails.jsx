@@ -1,8 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext.jsx';
 import EventTicket from '../components/EventTicket.jsx';
+import { canRegisterForEvent, canManageEvent } from '../utils/permissions.js';
+import { 
+  Calendar, 
+  MapPin, 
+  Users, 
+  Clock, 
+  Star, 
+  Share2, 
+  Download, 
+  Edit, 
+  Trash2,
+  CheckCircle2,
+  User,
+  MessageSquare,
+  X,
+  Camera
+} from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { toast } from 'react-toastify';
+import ImageGallery from '../components/ImageGallery.jsx';
+import GalleryUpload from '../components/GalleryUpload.jsx';
 
 export default function EventDetails() {
   const { id } = useParams();
@@ -11,22 +35,17 @@ export default function EventDetails() {
   const [event, setEvent] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [hasReviewed, setHasReviewed] = useState(false);
-  const [isRegistered, setIsRegistered] = useState(false); // New state to track registration status
-  const [toast, setToast] = useState({ open: false, type: 'info', message: '' });
-  // Add missing state variables
+  const [isRegistered, setIsRegistered] = useState(false);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
+  const [showTicket, setShowTicket] = useState(false);
+  const [selectedRegistration, setSelectedRegistration] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showGalleryUpload, setShowGalleryUpload] = useState(false);
 
-  const showToast = (type, message) => {
-    setToast({ open: true, type, message });
-    setTimeout(() => setToast({ open: false, type: 'info', message: '' }), 5000);
-  };
-
-  useEffect(() => {
-    load();
-  }, [id, user]);
-
-  async function load() {
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
     const [e, r] = await Promise.all([
       axios.get(`/api/events/${id}`),
       axios.get(`/api/reviews/${id}`),
@@ -34,55 +53,55 @@ export default function EventDetails() {
     setEvent(e.data.event);
     setReviews(r.data.reviews || []);
     
-    // Check if current user has already reviewed this event
     if (user) {
       const userReview = r.data.reviews?.find(review => review.user?._id === user.id);
       setHasReviewed(!!userReview);
       
-      // Check if current user is registered for this event
       try {
         const registrations = await axios.get('/api/registrations/me');
         const userRegistration = registrations.data.registrations?.find(reg => reg.event?._id === id);
-        // User is considered registered if they have an approved registration
         setIsRegistered(userRegistration?.status === 'approved');
+        setSelectedRegistration(userRegistration);
       } catch (error) {
         console.error('Failed to check registration status:', error);
       }
+      }
+    } catch (error) {
+      toast.error('Failed to load event details');
+      console.error('Error loading event:', error);
+    } finally {
+      setLoading(false);
     }
-  }
+  }, [id, user]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   async function register() {
-    // If user is not logged in, redirect to signup page with a message
     if (!user) {
-      // Store a message in localStorage to be displayed on the signup page
       localStorage.setItem('signupMessage', 'Sign up to Register for this event');
-      // Store the current event URL in localStorage to redirect back after signup
       localStorage.setItem('returnUrl', window.location.pathname);
       navigate('/signup');
       return;
     }
     
-    // If user is already registered, show a message
     if (isRegistered) {
-      showToast('info', 'You are already registered for this event.');
+      toast.info('You are already registered for this event.');
       return;
     }
     
-    // If user is logged in, proceed with registration
     try {
       const response = await axios.post(`/api/registrations/${id}/register`);
-      showToast('success', response.data.message || 'Registration request submitted! Check your email for confirmation.');
-      // Reload the event data to update registration status
+      toast.success(response.data.message || 'Registration request submitted!');
       await load();
     } catch (error) {
       if (error.response?.status === 401) {
-        // Store a message in localStorage to be displayed on the signup page
         localStorage.setItem('signupMessage', 'Please sign up to register for this event');
-        // Store the current event URL in localStorage to redirect back after signup
         localStorage.setItem('returnUrl', window.location.pathname);
         navigate('/signup');
       } else {
-        showToast('error', `Registration failed: ${error.response?.data?.message || 'Please try again.'}`);
+        toast.error(`Registration failed: ${error.response?.data?.message || 'Please try again.'}`);
       }
     }
   }
@@ -92,7 +111,8 @@ export default function EventDetails() {
     if (navigator.share) {
       navigator.share({ title: event.title, text: event.description, url }).catch(()=>{});
     } else {
-      navigator.clipboard.writeText(url); alert('Event link copied!');
+      navigator.clipboard.writeText(url);
+      toast.success('Event link copied to clipboard!');
     }
   }
 
@@ -109,177 +129,442 @@ DTSTART:${start.toISOString().replace(/[-:]/g,'').split('.')[0]}Z
 DTEND:${end.toISOString().replace(/[-:]/g,'').split('.')[0]}Z
 SUMMARY:${event.title}
 DESCRIPTION:${event.description}
-LOCATION:${event.location}
+LOCATION:${event.venue}
 END:VEVENT
 END:VCALENDAR`;
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `${event.title}.ics`; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement('a'); 
+    a.href = url; 
+    a.download = `${event.title}.ics`; 
+    a.click(); 
+    URL.revokeObjectURL(url);
+    toast.success('Calendar event downloaded!');
   }
 
+  const getCategoryPlaceholder = (category) => {
+    switch (category?.toLowerCase()) {
+      case 'tech': return '/tech-event.jpg';
+      case 'sports': return '/sports-event.jpg';
+      case 'cultural': return '/cultural-event.jpg';
+      case 'workshop': return '/workshop-event.jpg';
+      case 'conference': return '/conference-event.jpg';
+      default: return '/placeholder.svg';
+    }
+  };
+
+  const getFullPosterUrl = (posterUrl) => {
+    if (!posterUrl) return null;
+    if (posterUrl.startsWith('http')) return posterUrl;
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    return `${backendUrl}${posterUrl}`;
+  };
+
   async function submitReview() {
+    if (!user) {
+      localStorage.setItem('signupMessage', 'Sign up to post a review for this event');
+      localStorage.setItem('returnUrl', window.location.pathname);
+      navigate('/signup');
+      return;
+    }
+
+    // Validate rating
+    if (typeof rating !== 'number' || rating < 1 || rating > 5 || !Number.isInteger(rating)) {
+      toast.error('Rating must be an integer between 1 and 5');
+      return;
+    }
+
     try {
-      console.log('Submitting review:', { rating, comment, eventId: id, user: user?.id });
-      console.log('Auth token:', axios.defaults.headers.common.Authorization);
-      
-      const response = await axios.post(`/api/reviews/${id}`, { rating, comment });
-      console.log('Review submitted successfully:', response.data);
-      showToast('success', 'Review posted successfully!');
+      await axios.post(`/api/reviews/${id}`, { rating, comment });
+      toast.success('Review posted successfully!');
       setComment('');
       await load();
     } catch (error) {
-      console.error('Review submission error:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      
       if (error.response?.status === 401) {
-        showToast('warning', 'Please log in to post a review.');
+        localStorage.setItem('signupMessage', 'Please sign up to post a review');
+        localStorage.setItem('returnUrl', window.location.pathname);
+        navigate('/signup');
       } else if (error.response?.status === 400 && error.response?.data?.message?.includes('reviewed')) {
-        showToast('info', 'You have already reviewed this event.');
+        toast.info('You have already reviewed this event.');
       } else {
-        showToast('error', `Failed to post review: ${error.response?.data?.message || 'Please try again.'}`);
+        toast.error(`Failed to post review: ${error.response?.data?.message || 'Please try again.'}`);
       }
     }
   }
 
-  if (!event) return <div className="flex justify-center items-center h-64">
-    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-  </div>;
+  const handleGalleryUploadSuccess = useCallback((/*newImages*/) => {
+    // Refresh the gallery
+    load();
+    setShowGalleryUpload(false);
+  }, [load]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="relative w-20 h-20"
+        >
+          <div className="absolute inset-0 border-4 border-indigo-200 dark:border-indigo-900 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-transparent border-t-indigo-600 rounded-full"></div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="max-w-4xl mx-auto py-8 px-4">
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">❓</div>
+          <h2 className="text-2xl font-bold mb-2">Event Not Found</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            The event you're looking for doesn't exist or has been removed.
+          </p>
+          <Button onClick={() => navigate('/')}>Browse Events</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      {/* Toast */}
-      {toast.open && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded shadow-lg ${toast.type==='success'?'bg-green-500 text-white':toast.type==='warning'?'bg-yellow-500 text-white':toast.type==='error'?'bg-red-500 text-white':'bg-blue-500 text-white'}`}>
-          <div className="flex items-start gap-2">
-            <span className="font-semibold capitalize">{toast.type}</span>
-            <span>{toast.message}</span>
-            <button className="ml-2" onClick={()=>setToast({ ...toast, open:false })}>×</button>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Event Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+      >
+        {/* Event Poster */}
+        <div className="lg:col-span-1">
+          <Card className="overflow-hidden">
+            <div className="relative">
+              <img
+                src={getFullPosterUrl(event.posterUrl) || getCategoryPlaceholder(event.category)}
+                alt={event.title}
+                className="w-full h-64 object-cover"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = getCategoryPlaceholder(event.category);
+                }}
+              />
+              <div className="absolute top-4 right-4">
+                <Badge variant={event.status === 'approved' ? 'success' : 'warning'}>
+                  {event.status}
+                </Badge>
+              </div>
+            </div>
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <Calendar className="w-5 h-5" />
+                  <span>{new Date(event.date).toLocaleDateString()}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <Clock className="w-5 h-5" />
+                  <span>{event.time || 'Time not set'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <MapPin className="w-5 h-5" />
+                  <span>{event.venue || 'Venue not set'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <Users className="w-5 h-5" />
+                  <span>
+                    {event.capacity ? `${event.registrations?.length || 0}/${event.capacity}` : 'Unlimited'} spots
+                  </span>
+                </div>
+                {event.organizer && (
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <User className="w-5 h-5" />
+                    <span>Organized by {event.organizer.name}</span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Event Details */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-3xl font-bold mb-2 dark:text-white">{event.title}</h1>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <Badge variant="secondary">{event.category}</Badge>
+                    <Badge variant="secondary">{event.department}</Badge>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {event.description?.substring(0, 150)}...
+                  </p>
+                </div>
+
+                {canRegisterForEvent(user, event) && (
+                  <Button
+                    variant={isRegistered ? "success" : "primary"}
+                    size="lg"
+                    className="w-full"
+                    onClick={register}
+                    disabled={isRegistered}
+                  >
+                    {isRegistered ? (
+                      <>
+                        <CheckCircle2 className="w-5 h-5 mr-2" />
+                        Registered
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-5 h-5 mr-2" />
+                        Register for Event
+                      </>
+                    )}
+                  </Button>
+                )}
+                {!user && (
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    className="w-full"
+                    onClick={() => {
+                      localStorage.setItem('signupMessage', 'Sign up to Register for this event');
+                      localStorage.setItem('returnUrl', window.location.pathname);
+                      navigate('/signup');
+                    }}
+                  >
+                    Sign Up to Register
+                  </Button>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={shareEvent}
+                  >
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Share
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={downloadIcs}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Calendar
+                  </Button>
+                </div>
+                {canManageEvent(user, event) && (
+                  <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-slate-700">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => navigate(`/dashboard?edit=${event._id}`)}
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </motion.div>
+
+      {/* Description */}
+      <Card>
+        <CardHeader>
+          <CardTitle>About This Event</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg whitespace-pre-wrap">
+            {event.description}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Gallery Upload Section for Organizers */}
+      {canManageEvent(user, event) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="w-5 h-5" />
+              Event Gallery Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!showGalleryUpload ? (
+              <div className="text-center py-8">
+                <Button 
+                  onClick={() => setShowGalleryUpload(true)}
+                  className="flex items-center gap-2 mx-auto"
+                >
+                  <Camera className="w-4 h-4" />
+                  Upload Event Photos
+                </Button>
+                <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">
+                  Share photos from your event with attendees and visitors
+                </p>
+              </div>
+            ) : (
+              <GalleryUpload 
+                eventId={event._id} 
+                onUploadSuccess={handleGalleryUploadSuccess} 
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Reviews Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5" />
+            Reviews ({reviews.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Review Form */}
+          {user && !hasReviewed && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-6 bg-gray-50 dark:bg-slate-700/50 rounded-xl"
+            >
+              <h3 className="font-semibold mb-4 dark:text-white">Write a Review</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 dark:text-gray-300">Rating</label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setRating(star)}
+                        className="focus:outline-none"
+                      >
+                        <Star
+                          className={`w-6 h-6 ${
+                            star <= rating
+                              ? 'text-amber-400 fill-amber-400'
+                              : 'text-gray-300 dark:text-gray-600'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 dark:text-gray-300">Comment</label>
+                  <textarea 
+                    value={comment} 
+                    onChange={(e) => setComment(e.target.value)} 
+                    placeholder="Share your experience..."
+                    rows={4}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  />
+                </div>
+                <Button onClick={submitReview} variant="primary">
+                  Submit Review
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Reviews List */}
+          <div className="space-y-4">
+            {reviews.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No reviews yet. Be the first to review!</p>
+              </div>
+            ) : (
+              reviews.map((review, index) => (
+                <motion.div
+                  key={review._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl"
+                >
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center flex-shrink-0">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900 dark:text-white">
+                        {review.user?.name || 'Anonymous'}
+                      </div>
+                      <div className="flex items-center gap-1 mt-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${
+                              i < review.rating
+                                ? 'text-amber-400 fill-amber-400'
+                                : 'text-gray-300 dark:text-gray-600'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(review.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <p className="text-gray-700 dark:text-gray-300">{review.comment}</p>
+                </motion.div>
+              ))
+            )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Gallery Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Camera className="w-5 h-5" />
+            Event Gallery
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ImageGallery eventId={event._id} title={`${event.title} Gallery`} />
+        </CardContent>
+      </Card>
+      
+      {/* Ticket Modal */}
+      {showTicket && selectedRegistration && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative max-w-2xl w-full bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden"
+          >
+            <button
+              onClick={() => setShowTicket(false)}
+              className="absolute top-4 right-4 z-10 p-2 bg-white dark:bg-slate-800 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-slate-700"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="p-6">
+              <EventTicket 
+                registration={selectedRegistration} 
+                event={event}
+                user={user}
+                onReady={() => {}}
+                onDownload={() => {}}
+              />
+            </div>
+          </motion.div>
         </div>
       )}
-      
-      <div className="grid md:grid-cols-2 gap-8">
-        <div className="relative rounded-lg overflow-hidden shadow-lg">
-          <img 
-            src={event.posterUrl ? `${event.posterUrl}?v=${Date.now()}` : '/placeholder.svg'} 
-            alt={`${event.title} poster`}
-            className="w-full h-80 object-cover"
-            onError={(ev)=>{ 
-              ev.currentTarget.onerror=null; 
-              ev.currentTarget.src='/placeholder.svg';
-              ev.currentTarget.alt='Event poster placeholder';
-            }}
-          />
-          <div className="absolute top-2 left-2">
-            <span className={`text-xs px-2 py-1 rounded ${event.status==='approved' ? 'bg-green-100 text-green-800' : event.status==='pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{event.status}</span>
-          </div>
-        </div>
-        
-        <div className="bg-[url('/white-simple-textured-design-background.jpg')] bg-cover bg-center rounded-lg shadow p-6 dark:bg-[url('/banner.jpg')] dark:bg-cover dark:bg-center">
-          <h1 className="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mb-3">{event.title}</h1>
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <span className="text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-200 px-2 py-1 rounded">{event.category}</span>
-            <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 px-2 py-1 rounded">⭐ {event.averageRating?.toFixed?.(1) || '0.0'}</span>
-          </div>
-          <p className="text-gray-700 dark:text-slate-300 mb-6">{event.description}</p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-slate-700 rounded">
-            <div>
-              <div className="text-sm text-gray-500 dark:text-slate-400 flex items-center mb-1">
-                <span className="mr-2">📅</span>
-                Date & Time
-              </div>
-              <div className="font-semibold">{new Date(event.date).toLocaleString()}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500 dark:text-slate-400 flex items-center mb-1">
-                <span className="mr-2">📍</span>
-                Location
-              </div>
-              <div className="font-semibold">{event.location}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500 dark:text-slate-400 flex items-center mb-1">
-                <span className="mr-2">👥</span>
-                Capacity
-              </div>
-              <div className="font-semibold">{event.capacity ? `${event.capacity} people` : 'Unlimited'}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500 dark:text-slate-400 flex items-center mb-1">
-                <span className="mr-2">👤</span>
-                Organizer
-              </div>
-              <div className="font-semibold">{event.organizer?.name || 'Unknown'}</div>
-            </div>
-          </div>
-          
-          <div className="flex flex-wrap gap-3 mt-6">
-            <button 
-              className={user 
-                ? isRegistered 
-                  ? 'btn-secondary' 
-                  : 'btn-primary'
-                : 'btn-primary'}
-              onClick={register}
-              disabled={isRegistered}
-            >
-              {!user ? 'Sign Up to Register' : isRegistered ? 'Already Registered' : 'Register for Event'}
-            </button>
-            <button className="btn-secondary" onClick={shareEvent}>Share</button>
-            <button className="btn-secondary" onClick={downloadIcs}>Calendar</button>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-[url('/white-simple-textured-design-background.jpg')] bg-cover bg-center rounded-lg shadow p-6 dark:bg-[url('/banner.jpg')] dark:bg-cover dark:bg-center">
-        <h2 className="text-xl font-bold mb-6">💬 Reviews</h2>
-        
-        {user && !hasReviewed && (
-          <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-gray-50 dark:bg-slate-700 rounded">
-            <select className="border border-gray-300 dark:border-slate-600 rounded px-3 py-2" value={rating} onChange={(e) => setRating(Number(e.target.value))}>
-              {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} ⭐</option>)
-              }
-            </select>
-            <input className="border border-gray-300 dark:border-slate-600 rounded px-3 py-2 flex-1" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Share your experience" />
-            <button className="btn-primary" onClick={submitReview} disabled={!comment.trim()}>Post</button>
-          </div>
-        )}
-
-        {user && hasReviewed && (
-          <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded p-4 mb-6">
-            <p className="text-green-800 dark:text-green-200">
-              ✅ You have already reviewed this event.
-            </p>
-          </div>
-        )}
-        
-        <ul className="space-y-4">
-          {reviews.length > 0 ? (
-            reviews.map((r) => (
-              <li key={r._id} className="p-5 bg-white dark:bg-slate-700 rounded shadow">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="text-sm font-medium text-gray-700 dark:text-slate-300">{r.user?.name}</div>
-                  <div className="text-sm text-gray-500 dark:text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</div>
-                </div>
-                <div className="mb-3 flex items-center">
-                  <div className="flex text-amber-500">
-                    {'★'.repeat(r.rating)}
-                    {'☆'.repeat(5 - r.rating)}
-                  </div>
-                  <span className="ml-2 text-gray-700 dark:text-slate-300 font-medium">{r.rating}.0</span>
-                </div>
-                <p className="text-gray-700 dark:text-slate-200">{r.comment}</p>
-              </li>
-            ))
-          ) : (
-            <li className="text-center py-8 text-gray-500 dark:text-slate-400">
-              No reviews yet. Be the first to review this event!
-            </li>
-          )}
-        </ul>
-      </div>
     </div>
   );
 }

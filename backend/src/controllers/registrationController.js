@@ -1,5 +1,6 @@
 import Registration from '../models/Registration.js';
 import Event from '../models/Event.js';
+import User from '../models/User.js';
 import { generateQRCodeDataUrl } from '../utils/qrcode.js';
 import { sendEmail } from '../utils/email.js';
 import { createObjectCsvWriter } from 'csv-writer';
@@ -8,7 +9,12 @@ import { createNotification } from './notificationController.js';
 
 export const registerForEvent = async (req, res) => {
   try {
-    const event = await Event.findById(req.params.id);
+    // Check if user is a student
+    if (req.user.role !== 'student') {
+      return res.status(403).json({ message: 'Only students can register for events' });
+    }
+    
+    const event = await Event.findById(req.params.id).populate('organizerId', 'name email');
     if (!event || event.status !== 'approved') return res.status(400).json({ message: 'Event not available' });
     
     // Check if user is already registered (any status)
@@ -50,7 +56,17 @@ export const registerForEvent = async (req, res) => {
         'registration'
       );
       
-      // TODO: Create notification for admin (would need to find admin users)
+      // Create notification for event organizer
+      if (event.organizerId) {
+        await createNotification(
+          event.organizerId._id,
+          'New Registration Request',
+          `A new user has requested to register for your event: ${event.title}. Please review the registration in your dashboard.`,
+          'info',
+          reg._id,
+          'registration'
+        );
+      }
     } catch (_) {}
     
     res.status(201).json({ registration: reg, message: 'Registration request submitted. Awaiting admin approval.' });
@@ -144,6 +160,18 @@ export const approveRegistration = async (req, res) => {
         registration._id,
         'registration'
       );
+      
+      // Notify organizer about approved registration
+      if (registration.event.organizerId) {
+        await createNotification(
+          registration.event.organizerId._id,
+          'Registration Approved',
+          `Registration for ${registration.event.title} has been approved for ${registration.user.name}.`,
+          'success',
+          registration._id,
+          'registration'
+        );
+      }
     } catch (_) {}
     
     res.json({ registration, message: 'Registration approved successfully' });
@@ -192,56 +220,85 @@ export const denyRegistration = async (req, res) => {
         registration._id,
         'registration'
       );
+      
+      // Notify organizer about denied registration
+      if (registration.event.organizerId) {
+        await createNotification(
+          registration.event.organizerId._id,
+          'Registration Denied',
+          `Registration for ${registration.event.title} has been denied for ${registration.user.name}.${reason ? ` Reason: ${reason}` : ''}`,
+          'warning',
+          registration._id,
+          'registration'
+        );
+      }
     } catch (_) {}
     
-    res.json({ registration, message: 'Registration denied' });
+    res.json({ registration, message: 'Registration denied successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-export const participantsForEvent = async (req, res) => {
+// Get participants for an event (organizer only)
+export const getParticipants = async (req, res) => {
   try {
-    const regs = await Registration.find({ event: req.params.id }).populate('user', 'name email');
-    res.json({ participants: regs });
+    const { id: eventId } = req.params;
+    
+    // Verify that the event belongs to the organizer or user is admin
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    // Check if user is the organizer of this event or an admin
+    if (req.user.role !== 'admin' && event.organizerId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied. You are not the organizer of this event.' });
+    }
+    
+    // Get all registrations for this event with user details
+    const participants = await Registration.find({ event: eventId })
+      .populate('user', 'name email')
+      .sort({ createdAt: -1 });
+    
+    res.json({ participants });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-export const checkInParticipant = async (req, res) => {
-  try {
-    const reg = await Registration.findOneAndUpdate(
-      { user: req.body.userId, event: req.params.id },
-      { status: 'attended', checkedInAt: new Date() },
-      { new: true }
-    );
-    if (!reg) return res.status(404).json({ message: 'Registration not found' });
-    res.json({ registration: reg });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
+// Export participants as CSV (organizer only)
 export const exportParticipantsCsv = async (req, res) => {
   try {
-    const regs = await Registration.find({ event: req.params.id }).populate('user', 'name email');
-    const rows = regs.map(r => ({ name: r.user?.name || '', email: r.user?.email || '', status: r.status, registeredAt: r.createdAt }));
-    const filePath = path.join(process.cwd(), `participants-${req.params.id}.csv`);
-    const csvWriter = createObjectCsvWriter({
-      path: filePath,
-      header: [
-        { id: 'name', title: 'Name' },
-        { id: 'email', title: 'Email' },
-        { id: 'status', title: 'Status' },
-        { id: 'registeredAt', title: 'Registered At' },
-      ],
+    const { id: eventId } = req.params;
+    
+    // Verify that the event belongs to the organizer or user is admin
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    // Check if user is the organizer of this event or an admin
+    if (req.user.role !== 'admin' && event.organizerId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied. You are not the organizer of this event.' });
+    }
+    
+    // Get all registrations for this event with user details
+    const participants = await Registration.find({ event: eventId })
+      .populate('user', 'name email')
+      .sort({ createdAt: -1 });
+    
+    // Create CSV content
+    let csvContent = 'Name,Email,Registration Status,Registration Date\n';
+    participants.forEach(reg => {
+      csvContent += `"${reg.user.name}","${reg.user.email}","${reg.status}","${reg.createdAt.toISOString()}"\n`;
     });
-    await csvWriter.writeRecords(rows);
-    res.download(filePath);
+    
+    // Set headers for file download
+    res.header('Content-Type', 'text/csv');
+    res.attachment(`participants-${eventId}.csv`);
+    res.send(csvContent);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
-
-

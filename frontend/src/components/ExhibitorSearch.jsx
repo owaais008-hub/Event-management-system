@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
@@ -15,26 +15,9 @@ export default function ExhibitorSearch() {
 
   useEffect(() => {
     fetchExhibitors();
-  }, []);
+  }, [fetchExhibitors]);
 
-  useEffect(() => {
-    filterAndSortExhibitors();
-  }, [exhibitors, searchTerm, categoryFilter, sortBy]);
-
-  async function fetchExhibitors() {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await axios.get('/api/exhibitors/approved');
-      setExhibitors(res.data.exhibitors || []);
-    } catch (err) {
-      setError('Failed to load exhibitors');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function filterAndSortExhibitors() {
+  const filterAndSortExhibitors = useCallback(() => {
     let result = [...exhibitors];
     
     // Apply search filter
@@ -68,7 +51,25 @@ export default function ExhibitorSearch() {
     });
     
     setFilteredExhibitors(result);
-  }
+  }, [exhibitors, searchTerm, categoryFilter, sortBy]);
+
+  useEffect(() => {
+    filterAndSortExhibitors();
+  }, [exhibitors, searchTerm, categoryFilter, sortBy, filterAndSortExhibitors]);
+
+  const fetchExhibitors = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await axios.get('/api/exhibitors/approved');
+      setExhibitors(res.data.exhibitors || []);
+    } catch (err) {
+      console.error('Error fetching exhibitors:', err);
+      setError('Failed to load exhibitors');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // Get unique categories for filter dropdown
   const categories = [...new Set(exhibitors.map(e => e.category).filter(Boolean))].sort();

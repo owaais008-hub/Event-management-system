@@ -10,9 +10,9 @@ export default function useSocket(url, userId = null) {
     socketRef.current = s;
     s.on('announcement', (payload) => setAnnouncements((a) => [payload, ...a].slice(0, 20)));
     
-    // Register user with socket if userId is provided
+    // Join user room if userId is provided
     if (userId) {
-      s.emit('registerUser', userId);
+      s.emit('join-user-room', userId);
     }
     
     return () => { s.close(); };

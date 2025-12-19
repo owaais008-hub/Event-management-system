@@ -33,6 +33,11 @@ const sessionSchema = new mongoose.Schema({
     type: String,
     default: '/placeholder-session.jpg'
   },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
   bookmarks: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

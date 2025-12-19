@@ -53,12 +53,13 @@ export default async function handler(req, res) {
           return res.status(404).json({ message: 'Action not found' });
       }
     case 'GET':
-      if (req.query.action === 'pending-events') {
-        return listPendingEvents(req, res);
+      switch (req.query.action) {
+        case 'pending-events':
+          return listPendingEvents(req, res);
+        default:
+          return res.status(404).json({ message: 'Action not found' });
       }
-      return res.status(404).json({ message: 'Action not found' });
     default:
-      res.setHeader('Allow', ['GET', 'POST']);
-      return res.status(405).json({ message: `Method ${method} not allowed` });
+      return res.status(405).json({ message: 'Method not allowed' });
   }
 }

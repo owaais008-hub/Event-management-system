@@ -6,9 +6,9 @@ import { addReview, listReviews, updateReview, deleteReview, getUserReviews } fr
 const router = Router();
 
 router.get('/:id', listReviews);
-router.post('/:id', authenticate, authorizeRoles('customer', 'organizer', 'admin'), addReview);
-router.put('/:id', authenticate, authorizeRoles('customer', 'organizer', 'admin'), updateReview);
-router.delete('/:id', authenticate, authorizeRoles('customer', 'organizer', 'admin'), deleteReview);
+router.post('/:id', authenticate, authorizeRoles('student', 'organizer'), addReview);
+router.put('/:id', authenticate, authorizeRoles('student', 'organizer'), updateReview);
+router.delete('/:id', authenticate, authorizeRoles('student', 'organizer'), deleteReview);
 router.get('/user/me', authenticate, getUserReviews);
 
 export default router;

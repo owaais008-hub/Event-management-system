@@ -5,7 +5,12 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "echo 'Building Vercel serverless functions'"
+    "build": "echo 'Building Vercel serverless functions'",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "start": "concurrently \"npm run start:backend\" \"npm run dev:frontend\"",
+    "start:backend": "cd backend && npm start"
   },
   "keywords": [
     "event-management",
@@ -16,5 +21,8 @@
     "nodejs"
   ],
   "author": "owaisworkers",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
 }

@@ -34,7 +34,8 @@ export default function Schedule() {
     try {
       const res = await axios.get('/api/sessions');
       setSessions(res.data.sessions || []);
-    } catch (err) {
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
       setError('Failed to load sessions');
     } finally {
       setLoading(false);
@@ -45,8 +46,8 @@ export default function Schedule() {
     try {
       const res = await axios.get('/api/sessions/bookmarks');
       setBookmarkedSessions(res.data.sessions || []);
-    } catch (err) {
-      console.error('Failed to load bookmarked sessions');
+    } catch (error) {
+      console.error('Failed to load bookmarked sessions:', error);
     }
   }
 
@@ -74,8 +75,9 @@ export default function Schedule() {
       resetForm();
       setShowForm(false);
       fetchSessions();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save session');
+    } catch (error) {
+      console.error('Error saving session:', error);
+      setError(error.response?.data?.message || 'Failed to save session');
     }
   }
 
@@ -85,8 +87,9 @@ export default function Schedule() {
     try {
       await axios.delete(`/api/sessions/${id}`);
       fetchSessions();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to delete session');
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      setError(error.response?.data?.message || 'Failed to delete session');
     }
   }
 
@@ -102,8 +105,8 @@ export default function Schedule() {
           setBookmarkedSessions([...bookmarkedSessions, session]);
         }
       }
-    } catch (err) {
-      console.error('Failed to toggle bookmark');
+    } catch (error) {
+      console.error('Failed to toggle bookmark:', error);
     }
   }
 
@@ -147,44 +150,76 @@ export default function Schedule() {
     return groups;
   }, {});
 
+  // Get status badge class for session status
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'approved':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'rejected':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+    }
+  };
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">
-            Event Schedule
-          </h1>
-          <p className="text-gray-600 dark:text-slate-400 mt-1">
-            Plan your event experience
-          </p>
+    <div className="space-y-10 animate-fade-in">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-slate-800 dark:to-slate-700 rounded-2xl p-6 shadow-lg border border-indigo-100 dark:border-slate-600">
+        <div className="flex items-center gap-4">
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white text-3xl shadow-lg">
+            📅
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gradient mb-1">
+              Sessions
+            </h1>
+            <p className="text-gray-600 dark:text-slate-300 text-lg">
+              Plan your event experience
+            </p>
+          </div>
         </div>
-        {user?.role === 'organizer' && (
+        {user?.role === 'organizer' && user?.isApproved && (
           <button 
-            className={`px-4 py-2 rounded ${showForm ? 'bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+            className={`px-6 py-3 rounded-xl font-semibold shadow-lg transition-all duration-300 transform hover:scale-105 ${
+              showForm 
+                ? 'bg-white dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 border-2 border-gray-300 dark:border-slate-600' 
+                : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-xl'
+            }`}
             onClick={() => {
               resetForm();
               setShowForm(!showForm);
             }}
           >
-            {showForm ? 'Cancel' : 'Add Session'}
+            {showForm ? '✕ Cancel' : '+ Add Session'}
           </button>
         )}
       </div>
 
       {error && (
-        <div className="rounded p-4 border-l-4 border-l-red-500 bg-red-50 dark:bg-red-900/30">
-          <div className="flex items-center text-red-700 dark:text-red-300">
-            <span className="mr-2">⚠️</span>
-            {error}
+        <div className="rounded-2xl p-5 bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/30 dark:to-rose-900/30 border-2 border-red-200 dark:border-red-800 shadow-lg animate-slide-up">
+          <div className="flex items-center">
+            <div className="h-10 w-10 rounded-full bg-red-500 flex items-center justify-center mr-3">
+              <span className="text-xl">⚠️</span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-red-800 dark:text-red-200 mb-1">Error</h3>
+              <p className="text-red-700 dark:text-red-300">{error}</p>
+            </div>
           </div>
         </div>
       )}
 
-      {showForm && user?.role === 'organizer' && (
-        <div className="bg-[url('/white-simple-textured-design-background.jpg')] bg-cover bg-center rounded-lg shadow p-6 dark:bg-[url('/banner.jpg')] dark:bg-cover dark:bg-center">
-          <h2 className="font-bold text-xl mb-6">
-            {editingSession ? 'Edit Session' : 'Add New Session'}
-          </h2>
+      {showForm && user?.role === 'organizer' && user?.isApproved && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-slate-700">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="font-bold text-3xl text-gradient flex items-center">
+              <span className="mr-3 text-4xl">{editingSession ? '✏️' : '➕'}</span>
+              {editingSession ? 'Edit Session' : 'Add New Session'}
+            </h2>
+            <div className="h-1 flex-1 ml-6 bg-gradient-to-r from-indigo-500 to-transparent rounded-full"></div>
+          </div>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -296,18 +331,29 @@ export default function Schedule() {
       )}
 
       {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+        <div className="flex justify-center items-center h-80">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-indigo-500"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-3xl">⏳</div>
+          </div>
         </div>
       ) : Object.keys(groupedSessions).length === 0 ? (
-        <div className="bg-[url('/white-simple-textured-design-background.jpg')] bg-cover bg-center rounded-lg shadow p-12 text-center dark:bg-[url('/banner.jpg')] dark:bg-cover dark:bg-center">
-          <div className="text-5xl mb-4">📅</div>
-          <h3 className="text-xl font-semibold mb-2">No sessions scheduled yet</h3>
-          <p className="text-gray-600 dark:text-slate-400">
+        <div className="bg-gradient-to-br from-gray-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 rounded-2xl shadow-xl p-20 text-center border border-gray-100 dark:border-slate-600">
+          <div className="text-8xl mb-6 animate-bounce">📅</div>
+          <h3 className="text-3xl font-bold mb-4 text-gradient">No Sessions Scheduled Yet</h3>
+          <p className="text-gray-600 dark:text-slate-300 text-lg mb-8">
             {user?.role === 'organizer' 
               ? 'Add your first session using the button above.' 
               : 'Check back later for the event schedule.'}
           </p>
+          {user?.role === 'organizer' && (
+            <button 
+              className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              onClick={() => setShowForm(true)}
+            >
+              + Add First Session
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-8">
@@ -376,7 +422,16 @@ export default function Schedule() {
                       </div>
                     </div>
                     
-                    {user?.role === 'organizer' && (
+                    {/* Show status badge for organizers */}
+                    {user && user.role === 'organizer' && user.isApproved && (
+                      <div className="mt-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusBadgeClass(session.status)}`}>
+                          {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {user && user.role === 'organizer' && user.isApproved && (
                       <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-slate-800">
                         <button
                           className="px-3 py-1.5 bg-gray-200 dark:bg-slate-700 rounded-full text-xs hover:bg-gray-300 dark:hover:bg-slate-600"

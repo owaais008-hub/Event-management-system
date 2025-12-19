@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 export default function BoothManagement({ eventId }) {
@@ -7,24 +7,25 @@ export default function BoothManagement({ eventId }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (eventId) {
-      fetchBooths();
-    }
-  }, [eventId]);
-
-  async function fetchBooths() {
+  const fetchBooths = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.get(`/api/events/${eventId}/booths`);
+      const res = await axios.get(`/api/booths/event/${eventId}`);
       setBooths(res.data.booths || []);
     } catch (err) {
+      console.error('Failed to load booth information:', err);
       setError('Failed to load booth information');
     } finally {
       setLoading(false);
     }
-  }
+  }, [eventId]);
+
+  useEffect(() => {
+    if (eventId) {
+      fetchBooths();
+    }
+  }, [eventId, fetchBooths]);
 
   async function selectBooth(boothId) {
     try {
@@ -32,6 +33,7 @@ export default function BoothManagement({ eventId }) {
       setSelectedBooth(boothId);
       fetchBooths(); // Refresh booth data
     } catch (err) {
+      console.error('Failed to select booth:', err);
       setError(err.response?.data?.message || 'Failed to select booth');
     }
   }
@@ -42,6 +44,7 @@ export default function BoothManagement({ eventId }) {
       setSelectedBooth(null);
       fetchBooths(); // Refresh booth data
     } catch (err) {
+      console.error('Failed to release booth:', err);
       setError(err.response?.data?.message || 'Failed to release booth');
     }
   }
