@@ -69,7 +69,7 @@ cd ../frontend && npm install
 Create `backend/.env` with values similar to:
 ```env
 # For MongoDB Atlas (recommended for production)
-MONGO_URI=mongodb+srv://owaisworkers_db_user:YOUR_ACTUAL_PASSWORD_HERE@cluster0.iwqfafs.mongodb.net/eventmanager?retryWrites=true&w=majority
+MONGO_URI=mongodb+srv://your_username:your_password@your_cluster.mongodb.net/your_database?retryWrites=true&w=majority
 JWT_SECRET=your_secure_random_jwt_secret_here
 JWT_EXPIRES_IN=7d
 PORT=5000

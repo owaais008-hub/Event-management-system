@@ -20,7 +20,7 @@ console.log('=== MongoDB Atlas Setup Helper ===\n');
 if (!process.env.MONGO_URI) {
   console.error('❌ MONGO_URI is not set in .env file');
   console.log('\nPlease add the following to your .env file:');
-  console.log('MONGO_URI=mongodb+srv://username:password@cluster-name.abc123.mongodb.net/database-name?retryWrites=true&w=majority');
+  console.log('MONGO_URI=mongodb+srv://<username>:<password>@<cluster-name>.mongodb.net/<database-name>?retryWrites=true&w=majority');
   process.exit(1);
 }
 
@@ -48,7 +48,7 @@ dns.resolveSrv(`_mongodb._tcp.${hostname}`, (err, records) => {
     console.log('2. Check if your MongoDB Atlas cluster is running');
     console.log('3. Ensure your internet connection is working');
     console.log('4. Try regular DNS lookup...');
-    
+
     // Try regular DNS resolution as fallback
     dns.lookup(hostname, (err, address, family) => {
       if (err) {
@@ -74,34 +74,34 @@ dns.resolveSrv(`_mongodb._tcp.${hostname}`, (err, records) => {
 
 function testMongoConnection() {
   console.log('\n🔄 Testing MongoDB connection...');
-  
+
   mongoose.connect(mongoUri, {
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 5000,
     useNewUrlParser: true,
     useUnifiedTopology: true
   })
-  .then(() => {
-    console.log('✅ Successfully connected to MongoDB Atlas!');
-    
-    // Test a simple operation
-    return mongoose.connection.db.admin().command({ ping: 1 });
-  })
-  .then(() => {
-    console.log('✅ Ping successful - MongoDB Atlas is ready!');
-    console.log('\n🎉 MongoDB Atlas connection is working correctly!');
-    mongoose.connection.close();
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('❌ Failed to connect to MongoDB Atlas:', error.message);
-    
-    console.log('\n🔧 Troubleshooting steps:');
-    console.log('1. Verify your database user credentials');
-    console.log('2. Check if your IP is whitelisted in MongoDB Atlas Network Access');
-    console.log('3. Ensure your cluster is running');
-    console.log('4. Try using a local MongoDB instance as fallback for development');
-    
-    process.exit(1);
-  });
+    .then(() => {
+      console.log('✅ Successfully connected to MongoDB Atlas!');
+
+      // Test a simple operation
+      return mongoose.connection.db.admin().command({ ping: 1 });
+    })
+    .then(() => {
+      console.log('✅ Ping successful - MongoDB Atlas is ready!');
+      console.log('\n🎉 MongoDB Atlas connection is working correctly!');
+      mongoose.connection.close();
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('❌ Failed to connect to MongoDB Atlas:', error.message);
+
+      console.log('\n🔧 Troubleshooting steps:');
+      console.log('1. Verify your database user credentials');
+      console.log('2. Check if your IP is whitelisted in MongoDB Atlas Network Access');
+      console.log('3. Ensure your cluster is running');
+      console.log('4. Try using a local MongoDB instance as fallback for development');
+
+      process.exit(1);
+    });
 }
