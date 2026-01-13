@@ -9,10 +9,14 @@ import 'react-toastify/dist/ReactToastify.css'
 
 // Set axios defaults with better error handling
 try {
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '/api');
+  // Determine backend URL:
+  // 1. Use VITE_BACKEND_URL if provided (e.g., for external API or specific dev setup)
+  // 2. In development, default to http://localhost:5000
+  // 3. In production (e.g., Vercel), default to the current origin for serverless functions
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:5000' : window.location.origin);
   axios.defaults.baseURL = backendUrl;
   axios.defaults.withCredentials = true;
-  
+
   // Add request interceptor for logging
   if (import.meta.env.DEV) {
     axios.interceptors.request.use(request => {
@@ -25,7 +29,7 @@ try {
       return request;
     });
   }
-  
+
   // Add response interceptor for better error handling
   axios.interceptors.response.use(
     response => response,
@@ -48,11 +52,11 @@ function applyThemeFromStorage() {
   try {
     const root = document.documentElement;
     const body = document.body;
-    
+
     // Get theme from localStorage or default to light
     const storedTheme = localStorage.getItem('theme');
     const theme = storedTheme === 'dark' || storedTheme === 'light' ? storedTheme : 'light';
-    
+
     if (theme === 'dark') {
       root.classList.add('dark');
       body && body.classList.add('dark');
@@ -60,7 +64,7 @@ function applyThemeFromStorage() {
       root.classList.remove('dark');
       body && body.classList.remove('dark');
     }
-    
+
     // expose for debugging in dev mode only
     if (import.meta.env.DEV) {
       window.theme = {

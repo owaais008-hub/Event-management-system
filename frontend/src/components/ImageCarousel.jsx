@@ -58,7 +58,7 @@ export default function ImageCarousel({ images = [], autoPlay = true, interval =
   const getFullImageUrl = (imageUrl) => {
     if (!imageUrl) return null;
     if (imageUrl.startsWith('http')) return imageUrl;
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:5000' : window.location.origin);
     return `${backendUrl}${imageUrl}`;
   };
 
@@ -71,7 +71,7 @@ export default function ImageCarousel({ images = [], autoPlay = true, interval =
       {title && (
         <h2 className="text-2xl font-bold mb-4 dark:text-white">{title}</h2>
       )}
-      
+
       <Card className="overflow-hidden p-0 relative group">
         <div className="relative aspect-[16/9] md:aspect-[21/9] overflow-hidden">
           <AnimatePresence mode="wait">
@@ -90,7 +90,7 @@ export default function ImageCarousel({ images = [], autoPlay = true, interval =
                 loading="eager"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-              
+
               {/* Image Info Overlay */}
               {allImages[currentIndex]?.title && (
                 <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
@@ -153,11 +153,10 @@ export default function ImageCarousel({ images = [], autoPlay = true, interval =
                 <button
                   key={index}
                   onClick={() => goToImage(index)}
-                  className={`h-2 rounded-full transition-all ${
-                    index === currentIndex
+                  className={`h-2 rounded-full transition-all ${index === currentIndex
                       ? 'w-8 bg-white'
                       : 'w-2 bg-white/50 hover:bg-white/75'
-                  }`}
+                    }`}
                 />
               ))}
             </div>

@@ -11,13 +11,13 @@ export default function EventCard({ event, index = 0 }) {
     if (posterUrl.startsWith('http')) {
       return posterUrl;
     }
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:5001' : window.location.origin);
     return `${backendUrl}${posterUrl}`;
   };
 
   const getCategoryPlaceholder = (category) => {
     if (!category) return '/placeholder.svg';
-    
+
     switch (category.toLowerCase()) {
       case 'tech':
       case 'technology':
@@ -64,18 +64,18 @@ export default function EventCard({ event, index = 0 }) {
               transition={{ duration: 0.3 }}
               className="relative h-48 sm:h-56 w-full"
             >
-              <img 
-                src={getFullPosterUrl(event.posterUrl) || getCategoryPlaceholder(event.category)} 
+              <img
+                src={getFullPosterUrl(event.posterUrl) || getCategoryPlaceholder(event.category)}
                 alt={`${event.title} poster`}
                 className="w-full h-full object-cover"
-                onError={(ev)=>{ 
-                  ev.currentTarget.onerror=null; 
-                  ev.currentTarget.src=getCategoryPlaceholder(event.category);
-                  ev.currentTarget.alt='Event poster placeholder';
+                onError={(ev) => {
+                  ev.currentTarget.onerror = null;
+                  ev.currentTarget.src = getCategoryPlaceholder(event.category);
+                  ev.currentTarget.alt = 'Event poster placeholder';
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              
+
               {/* Status Badge */}
               <div className="absolute top-3 right-3 z-10">
                 <Badge variant={getStatusVariant(event.status)}>
@@ -93,7 +93,7 @@ export default function EventCard({ event, index = 0 }) {
               </div>
             </motion.div>
           </div>
-          
+
           <div className="p-5 flex-1 flex flex-col">
             <h3 className="font-bold text-lg mb-2 dark:text-white line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
               {event.title}
@@ -101,7 +101,7 @@ export default function EventCard({ event, index = 0 }) {
             <p className="text-gray-600 dark:text-slate-400 text-sm mb-4 line-clamp-2 flex-1">
               {event.description}
             </p>
-            
+
             {/* Department Badge */}
             {event.department && (
               <div className="mb-4">
@@ -110,15 +110,15 @@ export default function EventCard({ event, index = 0 }) {
                 </Badge>
               </div>
             )}
-            
+
             {/* Event Details */}
             <div className="space-y-2 mb-4 pt-4 border-t border-gray-100 dark:border-slate-700">
               <div className="flex items-center text-sm text-gray-600 dark:text-slate-400">
                 <Calendar className="w-4 h-4 mr-2 text-indigo-500" />
-                <span>{event.date ? new Date(event.date).toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric', 
-                  year: 'numeric' 
+                <span>{event.date ? new Date(event.date).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric'
                 }) : 'Date TBA'}</span>
               </div>
               {event.time && (
@@ -132,7 +132,7 @@ export default function EventCard({ event, index = 0 }) {
                 <span className="truncate">{event.venue || 'Venue TBA'}</span>
               </div>
             </div>
-            
+
             {/* View Details Link */}
             <motion.div
               className="flex items-center text-indigo-600 dark:text-indigo-400 font-semibold text-sm mt-auto"
