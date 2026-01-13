@@ -1,24 +1,11 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/*.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "lib/**",
-          "backend/src/**"
-        ]
-      }
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/*.js": {
+      "includeFiles": "{lib,backend/src}/**"
     }
-  ],
+  },
   "rewrites": [
     {
       "source": "/api/auth/:action",
@@ -74,16 +61,16 @@
     },
     {
       "source": "/uploads/(.*)",
-      "destination": "/frontend/uploads/$1"
+      "destination": "/uploads/$1"
     },
     {
-      "source": "/((?!api/).*)",
-      "destination": "/frontend/$1",
+      "source": "/(.*)",
+      "destination": "/$1",
       "continue": true
     },
     {
-      "source": "/((?!api/).*)",
-      "destination": "/frontend/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
