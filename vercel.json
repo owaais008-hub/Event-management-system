@@ -22,39 +22,55 @@
   "rewrites": [
     {
       "source": "/api/auth/:action",
-      "destination": "/api/auth?action=:action"
+      "destination": "/api/auth.js?action=:action"
     },
     {
       "source": "/api/events/:id",
-      "destination": "/api/events?id=:id"
+      "destination": "/api/events.js?id=:id"
     },
     {
       "source": "/api/events",
-      "destination": "/api/events"
+      "destination": "/api/events.js"
     },
     {
       "source": "/api/registrations/me",
-      "destination": "/api/registrations?action=my"
+      "destination": "/api/registrations.js?action=my"
     },
     {
       "source": "/api/registrations/pending",
-      "destination": "/api/registrations?action=pending"
+      "destination": "/api/registrations.js?action=pending"
     },
     {
       "source": "/api/registrations/:id/:action",
-      "destination": "/api/registrations?id=:id&action=:action"
+      "destination": "/api/registrations.js?id=:id&action=:action"
     },
     {
       "source": "/api/registrations",
-      "destination": "/api/registrations"
+      "destination": "/api/registrations.js"
     },
     {
       "source": "/api/stats/:action",
-      "destination": "/api/stats?action=:action"
+      "destination": "/api/stats.js?action=:action"
     },
     {
       "source": "/api/reviews/:id",
-      "destination": "/api/reviews?id=:id"
+      "destination": "/api/reviews.js?id=:id"
+    },
+    {
+      "source": "/api/health",
+      "destination": "/api/health.js"
+    },
+    {
+      "source": "/api/gallery/(.*)",
+      "destination": "/api/gallery.js"
+    },
+    {
+      "source": "/api/sessions/:id",
+      "destination": "/api/sessions.js?id=:id"
+    },
+    {
+      "source": "/api/sessions",
+      "destination": "/api/sessions.js"
     },
     {
       "source": "/uploads/(.*)",
