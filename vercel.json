@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "npm run build --prefix frontend",
+  "outputDirectory": "frontend/dist",
   "builds": [
     {
       "src": "api/*.js",
@@ -10,13 +12,6 @@
           "backend/src/**"
         ]
       }
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
     }
   ],
   "rewrites": [
@@ -25,8 +20,8 @@
       "destination": "/api/$1"
     },
     {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
+      "source": "/(.*)",
+      "destination": "/$1"
     }
   ]
 }
