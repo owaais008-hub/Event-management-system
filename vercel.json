@@ -1,7 +1,5 @@
 {
   "version": 2,
-  "buildCommand": "npm run build --prefix frontend",
-  "outputDirectory": "frontend/dist",
   "builds": [
     {
       "src": "api/*.js",
@@ -12,16 +10,64 @@
           "backend/src/**"
         ]
       }
+    },
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     }
   ],
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/api/auth/:action",
+      "destination": "/api/auth?action=:action"
     },
     {
-      "source": "/(.*)",
-      "destination": "/$1"
+      "source": "/api/events/:id",
+      "destination": "/api/events?id=:id"
+    },
+    {
+      "source": "/api/events",
+      "destination": "/api/events"
+    },
+    {
+      "source": "/api/registrations/me",
+      "destination": "/api/registrations?action=my"
+    },
+    {
+      "source": "/api/registrations/pending",
+      "destination": "/api/registrations?action=pending"
+    },
+    {
+      "source": "/api/registrations/:id/:action",
+      "destination": "/api/registrations?id=:id&action=:action"
+    },
+    {
+      "source": "/api/registrations",
+      "destination": "/api/registrations"
+    },
+    {
+      "source": "/api/stats/:action",
+      "destination": "/api/stats?action=:action"
+    },
+    {
+      "source": "/api/reviews/:id",
+      "destination": "/api/reviews?id=:id"
+    },
+    {
+      "source": "/uploads/(.*)",
+      "destination": "/frontend/uploads/$1"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/frontend/$1",
+      "continue": true
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/frontend/index.html"
     }
   ]
 }
