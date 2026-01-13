@@ -2,8 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
+      "src": "api/*.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "lib/**",
+          "backend/src/**"
+        ]
+      }
     },
     {
       "src": "frontend/package.json",
@@ -19,8 +25,8 @@
       "destination": "/api/$1"
     },
     {
-      "source": "/(.*)",
-      "destination": "/frontend/$1"
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }

@@ -10,10 +10,9 @@ import 'react-toastify/dist/ReactToastify.css'
 // Set axios defaults with better error handling
 try {
   // Determine backend URL:
-  // 1. Use VITE_BACKEND_URL if provided (e.g., for external API or specific dev setup)
-  // 2. In development, default to http://localhost:5000
-  // 3. In production (e.g., Vercel), default to the current origin for serverless functions
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:5000' : window.location.origin);
+  // In development, default to http://localhost:5000
+  // In production (Vercel), use empty string so requests are relative to current origin
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
   axios.defaults.baseURL = backendUrl;
   axios.defaults.withCredentials = true;
 
