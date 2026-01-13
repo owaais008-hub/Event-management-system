@@ -1,24 +1,12 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/*.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "lib/**",
-          "backend/src/**"
-        ]
-      }
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/*.js": {
+      "includeFiles": "backend/src/**"
     }
-  ],
+  },
   "rewrites": [
     {
       "source": "/api/auth/:action",
@@ -78,12 +66,7 @@
     },
     {
       "source": "/((?!api/).*)",
-      "destination": "/frontend/$1",
-      "continue": true
-    },
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/frontend/index.html"
+      "destination": "/index.html"
     }
   ]
 }
