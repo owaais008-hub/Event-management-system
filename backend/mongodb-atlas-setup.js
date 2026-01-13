@@ -20,7 +20,7 @@ console.log('=== MongoDB Atlas Setup Helper ===\n');
 if (!process.env.MONGO_URI) {
   console.error('❌ MONGO_URI is not set in .env file');
   console.log('\nPlease add the following to your .env file:');
-  console.log('MONGO_URI=mongodb+srv://<username>:<password>@<cluster-name>.mongodb.net/<database-name>?retryWrites=true&w=majority');
+  console.log('MONGO_URI=mongodb+srv://<DATABASE_USERNAME>:<DATABASE_PASSWORD>@<YOUR_CLUSTER_URL>/<DATABASE_NAME>?retryWrites=true&w=majority');
   process.exit(1);
 }
 
